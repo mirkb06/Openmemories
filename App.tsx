@@ -48,6 +48,38 @@ const INITIAL_DATA: AppState = {
   ]
 };
 
+// Protected Route Component - Ensures user is authenticated
+const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session);
+    };
+    checkAuth();
+  }, []);
+
+  // Show loading while checking authentication
+  if (isAuthenticated === null) {
+    return (
+      <div className="h-screen bg-gradient-to-br from-pink-100 to-purple-100 flex items-center justify-center">
+        <div className="text-center">
+          <Heart className="w-16 h-16 text-pink-400 animate-pulse mx-auto mb-4" />
+          <p className="text-slate-600 font-semibold text-lg">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect to onboarding if not authenticated (they'll see welcome screens, then can choose login/signup)
+  if (!isAuthenticated) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  return children;
+};
+
 const AppRoutes: React.FC<{ 
   state: AppState, 
   hasCompletedOnboarding: boolean, 
@@ -67,21 +99,66 @@ const AppRoutes: React.FC<{
       </div>
     }>
       <Routes>
+        {/* Public Routes */}
         <Route path="/splash" element={<Splash />} />
         <Route path="/onboarding" element={<Onboarding onComplete={completeOnboarding} />} />
         <Route path="/signup" element={<Signup onComplete={completeOnboarding} />} />
         <Route path="/login" element={<Login onComplete={completeOnboarding} />} />
         
-        <Route path="/" element={!hasCompletedOnboarding ? <Navigate to="/splash" /> : <Dashboard state={state} />} />
+        {/* Protected Routes - Require Authentication */}
+        <Route path="/" element={
+          <ProtectedRoute>
+            {!hasCompletedOnboarding ? <Navigate to="/splash" /> : <Dashboard state={state} />}
+          </ProtectedRoute>
+        } />
         
-        <Route path="/partner-connect" element={<PartnerConnect />} />
-        <Route path="/map" element={<MapPage memories={state.memories} />} />
-        <Route path="/timeline" element={<Timeline memories={state.memories} />} />
-        <Route path="/add" element={<AddMemory onAdd={addMemory} />} />
-        <Route path="/memory/:id" element={<MemoryDetail memories={state.memories} onDelete={deleteMemory} />} />
-        <Route path="/milestones" element={<Milestones state={state} />} />
-        <Route path="/profile" element={<Profile state={state} onUpdate={updateProfile} />} />
-        <Route path="/settings" element={<SettingsPage state={state} onUpdate={updateProfile} onReset={resetApp} />} />
+        <Route path="/partner-connect" element={
+          <ProtectedRoute>
+            <PartnerConnect />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/map" element={
+          <ProtectedRoute>
+            <MapPage memories={state.memories} />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/timeline" element={
+          <ProtectedRoute>
+            <Timeline memories={state.memories} />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/add" element={
+          <ProtectedRoute>
+            <AddMemory onAdd={addMemory} />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/memory/:id" element={
+          <ProtectedRoute>
+            <MemoryDetail memories={state.memories} onDelete={deleteMemory} />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/milestones" element={
+          <ProtectedRoute>
+            <Milestones state={state} />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/profile" element={
+          <ProtectedRoute>
+            <Profile state={state} onUpdate={updateProfile} />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/settings" element={
+          <ProtectedRoute>
+            <SettingsPage state={state} onUpdate={updateProfile} onReset={resetApp} />
+          </ProtectedRoute>
+        } />
         
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
